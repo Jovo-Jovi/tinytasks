@@ -34,24 +34,74 @@
     "e2e": ""
   },
   "modules": {
-    "language": { "on": false, "provider": "typescript" },
-    "styling": { "on": true, "provider": "tailwind" },
-    "ui-kit": { "on": true, "provider": "shadcn" },
-    "database": { "on": false, "provider": "supabase" },
-    "auth": { "on": false, "provider": "none" },
-    "storage": { "on": false, "provider": "supabase-storage" },
-    "payments": { "on": false, "provider": "none" },
-    "email": { "on": false, "provider": "none" },
-    "jobs": { "on": false, "provider": "none" },
-    "search": { "on": false, "provider": "none" },
-    "product-ai": { "on": false, "provider": "none" },
-    "i18n": { "on": true },
-    "testing": { "on": true, "unit": true, "playwright": false },
-    "hosting": { "on": true, "provider": "vercel" },
-    "observability": { "on": false, "provider": "structured-logs" },
-    "automation": { "on": true }
+    "language": {
+      "on": false,
+      "provider": "typescript"
+    },
+    "styling": {
+      "on": true,
+      "provider": "tailwind"
+    },
+    "ui-kit": {
+      "on": true,
+      "provider": "shadcn"
+    },
+    "database": {
+      "on": false,
+      "provider": "supabase"
+    },
+    "auth": {
+      "on": false,
+      "provider": "none"
+    },
+    "storage": {
+      "on": false,
+      "provider": "supabase-storage"
+    },
+    "payments": {
+      "on": false,
+      "provider": "none"
+    },
+    "email": {
+      "on": false,
+      "provider": "none"
+    },
+    "jobs": {
+      "on": false,
+      "provider": "none"
+    },
+    "search": {
+      "on": false,
+      "provider": "none"
+    },
+    "product-ai": {
+      "on": false,
+      "provider": "none"
+    },
+    "i18n": {
+      "on": true
+    },
+    "testing": {
+      "on": true,
+      "unit": true,
+      "playwright": false
+    },
+    "hosting": {
+      "on": true,
+      "provider": "vercel"
+    },
+    "observability": {
+      "on": false,
+      "provider": "structured-logs"
+    },
+    "automation": {
+      "on": true
+    }
   },
-  "languages": ["en", "ar"],
+  "languages": [
+    "en",
+    "ar"
+  ],
   "hosting": "vercel",
   "type": "dashboard",
   "framework": "next",

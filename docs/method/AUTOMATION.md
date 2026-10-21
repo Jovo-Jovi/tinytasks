@@ -6,7 +6,7 @@ Every workflow, script, label, and variable in this repository, in one place.
 
 | file | runs when | what it does |
 |------|-----------|--------------|
-| devos-cycle.yml | dispatch, workflow_call | One attempt of one task on branch task/Tnn. Builder writes code, checks run, reviewer writes docs/reviews/Tnn-aN.md, runner parses VERDICT. |
+| devos-cycle.yml | dispatch, workflow_call | One attempt of one task on branch task/Tnn. Installs the agent CLIs first (scripts/devos/install-clis.mjs). Builder writes code, checks run, reviewer writes docs/reviews/Tnn-aN.md, runner parses VERDICT. |
 | devos-intake.yml | issue labeled devos:change-request or devos:method-fix | Creates a fence and a ledger row, dispatches the cycle. |
 | devos-advance.yml | dispatch after a human merge | Marks the ledger row done, dispatches the next cycle. |
 | devos-doctor.yml | daily schedule | Runs the guards and the ledger check; opens an issue when red. |
@@ -19,7 +19,7 @@ Every workflow, script, label, and variable in this repository, in one place.
 
 ## Runner scripts (scripts/devos/)
 
-cycle.mjs, intake.mjs, advance.mjs, doctor.mjs, resume.mjs, setup.mjs, deploy.mjs, wait.mjs, supervisor.mjs, common.mjs.
+cycle.mjs, intake.mjs, advance.mjs, doctor.mjs, resume.mjs, setup.mjs, deploy.mjs, wait.mjs, supervisor.mjs, common.mjs, install-clis.mjs.
 
 ## Guards (scripts/guards/)
 

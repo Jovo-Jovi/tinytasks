@@ -19,6 +19,8 @@ jobs:
           node-version: 22
       - name: Install
         run: npm install --no-audit --no-fund
+      - name: Install the agent CLIs the cycle runs (reviewer + builders)
+        run: node scripts/devos/install-clis.mjs
       - name: One attempt of one task
         run: node scripts/devos/cycle.mjs
         env:
