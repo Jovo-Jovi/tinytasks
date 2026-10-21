@@ -1,0 +1,25 @@
+name: devos-wait
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: write
+  actions: write
+jobs:
+  gate:
+    if: >-
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'devos:human-gate')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Continue after the human merge
+        run: node scripts/devos/wait.mjs "$(basename "${{ github.event.pull_request.headRefName || github.event.pull_request.head.ref }}")"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

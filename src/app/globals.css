@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Framework default styles. Tokens live here when the ui-kit is custom-tokens. */
+:root {
+  --surface: #ffffff;
+  --text: #17202b;
+  --muted: #5c6b7a;
+  --todo: #d97706;
+  --progress: #2563eb;
+  --done: #15803d;
+  --danger: #b91c1c;
+}
+
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}

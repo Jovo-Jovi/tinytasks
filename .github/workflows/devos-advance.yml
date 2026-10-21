@@ -1,0 +1,26 @@
+name: devos-advance
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Task id that the human merged, for example T01
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: write
+jobs:
+  advance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Move the ledger and dispatch the next cycle
+        run: node scripts/devos/advance.mjs "${{ inputs.task }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}

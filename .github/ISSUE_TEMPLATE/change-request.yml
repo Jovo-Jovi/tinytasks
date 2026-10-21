@@ -1,0 +1,25 @@
+name: Change request
+description: Ask the automation for a change. The reviewer turns it into a task.
+labels: ["devos:change-request"]
+body:
+  - type: textarea
+    id: change
+    attributes:
+      label: What should change
+      description: One paragraph. Say the behavior, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: How you will check it yourself.
+    validations:
+      required: true
+  - type: checkboxes
+    id: risk
+    attributes:
+      label: Risk
+      options:
+        - label: This touches money, migrations, or personal data (adds a human gate).
+        - label: This changes the method (how the automation works).

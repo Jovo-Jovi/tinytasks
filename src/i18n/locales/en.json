@@ -1,0 +1,14 @@
+{
+  "app.name": "TinyTasks",
+  "app.tagline": "A simple, reliable way to organize daily tasks.",
+  "task.noun": "Task",
+  "task.status.todo": "Todo",
+  "task.status.inProgress": "In Progress",
+  "task.status.done": "Done",
+  "task.priority": "Priority",
+  "task.filter": "Filter",
+  "task.count": "Task count",
+  "state.loading": "Loading",
+  "state.empty": "No tasks yet",
+  "state.error": "Could not load tasks"
+}

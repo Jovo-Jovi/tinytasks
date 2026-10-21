@@ -1,0 +1,14 @@
+{
+  "app.name": "TinyTasks",
+  "app.tagline": "طريقة بسيطة وموثوقة لتنظيم المهام اليومية.",
+  "task.noun": "مهمة",
+  "task.status.todo": "للتنفيذ",
+  "task.status.inProgress": "قيد التنفيذ",
+  "task.status.done": "تم",
+  "task.priority": "الأولوية",
+  "task.filter": "تصفية",
+  "task.count": "عدد المهام",
+  "state.loading": "جارٍ التحميل",
+  "state.empty": "لا توجد مهام بعد",
+  "state.error": "تعذر تحميل المهام"
+}

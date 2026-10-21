@@ -1,0 +1,17 @@
+name: Method fix
+description: Change how the automation itself works. Risk 3, always a human gate.
+labels: ["devos:method-fix"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong in the method
+      description: Name the workflow, script, guard, or prompt that misbehaved.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: The fix you expect
+    validations:
+      required: true

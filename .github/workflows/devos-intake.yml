@@ -1,0 +1,28 @@
+name: devos-intake
+on:
+  issues:
+    types: [opened, labeled]
+permissions:
+  contents: write
+  issues: write
+  actions: write
+jobs:
+  intake:
+    if: >-
+      github.event_name == 'issues' &&
+      (contains(github.event.issue.labels.*.name, 'devos:change-request') ||
+       contains(github.event.issue.labels.*.name, 'devos:method-fix'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Turn the issue into a fence
+        run: node scripts/devos/intake.mjs
+        env:
+          DEVOS_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
