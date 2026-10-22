@@ -7,6 +7,9 @@ permissions:
   pull-requests: write
   issues: write
   actions: write
+env:
+  CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+
 jobs:
   cycle:
     runs-on: ubuntu-latest

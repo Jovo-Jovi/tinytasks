@@ -11,3 +11,5 @@ coverage/
 .vercel
 tsconfig.tsbuildinfo
 devos/state/
+# DEV_OS: local key values — never commit, never push.
+devos/secrets.local.json
