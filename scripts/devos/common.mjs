@@ -1,6 +1,6 @@
 // Shared helpers for the DEV_OS runner inside a bootstrapped project.
 // Runs on GitHub Actions and locally (tests use fake git/gh/model executables).
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -97,10 +97,12 @@ export function buildModelArgs(cli, model, promptFile) {
     case 'claude': return ['-p', '--model', model, '--permission-mode', 'acceptEdits', '--allowedTools', 'Read', 'Edit', 'Write', 'Glob', 'Grep'];
     // --trust answers Cursor's one-time directory-trust gate: a CI checkout (or a locally
     // bootstrapped folder) is untrusted to a fresh cursor CLI, which would otherwise refuse
-    // to start. It marks the folder trusted; it does not auto-approve tool calls (--yolo does).
+    // to start. --force ("force allow commands unless explicitly denied") is what lets a
+    // headless run actually apply edits and run commands: without it print mode only
+    // proposes changes and rejects every command, so a cycle would stall on its first edit.
     // model 'auto' sends no --model flag: Cursor then uses its Auto selection, which is the
     // only model Free plans are allowed to run.
-    case 'cursor': return model === 'auto' ? ['--trust', '-p'] : ['--trust', '-p', '--model', model];
+    case 'cursor': return model === 'auto' ? ['--trust', '--force', '-p'] : ['--trust', '--force', '-p', '--model', model];
     case 'gemini': return ['-p', '--model', model];
     case 'muse': return ['-p', '--model', model];
     case 'glm': return ['-p', '--model', model];
@@ -113,6 +115,39 @@ export function buildModelArgs(cli, model, promptFile) {
 
 export function promptDelivery(cli) {
   return cli === 'codex' ? 'arg' : 'stdin';
+}
+
+// The agent credentials each known CLI needs on GitHub Actions. The workflow maps
+// them from repository secrets; an empty mapping means the value was never typed.
+export const CLI_SECRETS = {
+  claude: ['CLAUDE_CODE_OAUTH_TOKEN', 'ANTHROPIC_API_KEY'],
+  cursor: ['CURSOR_API_KEY'],
+  codex: ['OPENAI_API_KEY'],
+  gemini: ['GEMINI_API_KEY'],
+  glm: ['ZAI_API_KEY'],
+  muse: ['MUSE_API_KEY'],
+};
+
+// Returns the missing secret NAME when the workflow mapped the credential but
+// GitHub holds no value for it (env var present yet empty). Undefined env vars
+// mean a local run with the developer's own login — nothing to demand there.
+// Custom tools have an unknown mapping; their run-time errors speak for them.
+export function missingCliSecret(cli) {
+  const names = CLI_SECRETS[cli];
+  if (!names) return null;
+  if (names.every((n) => process.env[n] === undefined)) return null;
+  const live = names.find((n) => String(process.env[n] || '').trim() !== '');
+  return live ? null : names[0];
+}
+
+// True when the CLI binary can start at all (spawn level). status null with an
+// error is the ENOENT wall that surfaced as "builder exited with code null" when
+// the workflow never installed the CLI — the cycle must name it, not burn an
+// attempt on it.
+export function cliAvailable(cli) {
+  const cmd = commandFor(cli);
+  const r = spawnSync(cmd, ['--version'], { encoding: 'utf8', timeout: 30000, shell: process.platform === 'win32' });
+  return { ok: r.status !== null && !r.error, command: cmd, detail: r.error ? String(r.error.message || r.error) : '' };
 }
 
 // Runs one model step. The model never receives GITHUB_TOKEN: it does not run git or gh.
@@ -138,6 +173,61 @@ export function runModelStep({ projectDir, cli, model, role, prompt, log = () =>
   const out = String(r.stdout || '');
   const err = String(r.stderr || '');
   return { code: r.status, out, err, combined: `${out}\n${err}`.trim() };
+}
+
+// The live variant of runModelStep: the same launch rules (the model never
+// receives a git credential, --model always passed), but the process runs
+// async so a HEARTBEAT can fire while it works. Why: a builder that reads,
+// thinks and edits for twenty minutes produced zero output, the workflow step
+// looked frozen, and the field asked "why 10% and time stops". The heartbeat
+// is plain log lines in the run log — every minute, what the role is and how
+// long it has been working. The returned shape matches runModelStep exactly,
+// so callers can treat both alike (streams are capped, not unbounded).
+export function runModelStepLive({ projectDir, cli, model, role, prompt, log = () => {}, heartbeatMs = 60_000, heartbeat = null }) {
+  const promptFile = join(projectDir, 'devos', 'state', `${role}-prompt.md`);
+  mkdirSync(join(projectDir, 'devos', 'state'), { recursive: true });
+  writeFileSync(promptFile, prompt);
+  const args = buildModelArgs(cli, model, promptFile);
+  const env = { ...process.env };
+  delete env.GH_TOKEN;
+  delete env.GITHUB_TOKEN;
+  env.DEVOS_ROLE = role;
+  env.DEVOS_CLI_ID = cli;
+  env.DEVOS_MODEL = model;
+  env.DEVOS_PROJECT_DIR = projectDir;
+  log(`${role}: ${cli} ${model}`);
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(commandFor(cli), args, {
+        cwd: projectDir, env,
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: process.platform === 'win32',
+      });
+    } catch (e) {
+      resolve({ code: null, out: '', err: String(e.message || e), combined: String(e.message || e) });
+      return;
+    }
+    const CAP = 200_000;
+    let out = '';
+    let err = '';
+    child.stdout.on('data', (d) => { out = (out + d).slice(-CAP); });
+    child.stderr.on('data', (d) => { err = (err + d).slice(-CAP); });
+    if (promptDelivery(cli) === 'stdin') {
+      try { child.stdin.write(prompt); } catch { /* the CLI closed early */ }
+    }
+    try { child.stdin.end(); } catch { /* already gone */ }
+    const t0 = Date.now();
+    const timer = heartbeat
+      ? setInterval(() => { try { heartbeat(Math.max(1, Math.round((Date.now() - t0) / 60_000))); } catch { /* a heartbeat must never break the run */ } }, heartbeatMs)
+      : null;
+    const finish = (code, extraErr = '') => {
+      if (timer) clearInterval(timer);
+      resolve({ code, out, err: `${err}${extraErr}`.trim(), combined: `${out}\n${err}${extraErr}`.trim() });
+    };
+    child.on('error', (e) => finish(null, ` ${String(e.message || e)}`));
+    child.on('close', (code) => finish(code));
+  });
 }
 
 // docs/PHASES.md ledger: | id | title | status | attempt | risk | gate |

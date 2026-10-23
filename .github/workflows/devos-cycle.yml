@@ -1,3 +1,13 @@
+# devos:cycle-v2 — one run is one attempt of one task, in five visible steps:
+#   resolve → Builder → Checks → Review → Verdict (merge | human gate | next attempt | halt).
+# The run page shows exactly where the attempt is; the pull request carries every
+# detail as comments (builder outcome, checks, verdict); the builder and the
+# reviewer emit a heartbeat every minute, so a long think never looks frozen.
+# The agent credentials live at the TOP level on purpose: a top-level env block
+# is the one scope every step inherits (echoes, checks, the cycle script, the
+# builder, the reviewer). A mapping on one step leaves every other step blind —
+# the exact failure that shows up as "builder exited with code 1: Authentication
+# required". Values come only from repository secrets; none is ever written here.
 name: devos-cycle
 on:
   workflow_dispatch:
@@ -8,11 +18,16 @@ permissions:
   issues: write
   actions: write
 env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
   CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
 jobs:
   cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,19 +40,33 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install
+      - name: Install project dependencies
+        if: hashFiles('package.json') != ''
         run: npm install --no-audit --no-fund
       - name: Install the agent CLIs the cycle runs (reviewer + builders)
         run: node scripts/devos/install-clis.mjs
-      - name: One attempt of one task
-        run: node scripts/devos/cycle.mjs
+      - name: Resolve the attempt (task, branch, preflight)
+        id: start
+        run: node scripts/devos/cycle.mjs start
+      - name: Builder — work the fence
+        if: steps.start.outputs.todo == 'true'
+        run: node scripts/devos/cycle.mjs build
+        env:
+          # GITHUB_TOKEN stays step-scoped: the cycle runner needs it for the push
+          # and the PR, the model processes must not (cycle.mjs strips it before spawn).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checks — typecheck, lint, tests, build, guards
+        if: steps.start.outputs.todo == 'true'
+        run: node scripts/devos/cycle.mjs checks
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          # The reviewer's and builder's own agent credentials, exported only to their steps.
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+      - name: Review — an independent verdict on the built work
+        if: steps.start.outputs.todo == 'true'
+        run: node scripts/devos/cycle.mjs review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verdict — merge, human gate, next attempt, or halt
+        if: steps.start.outputs.todo == 'true'
+        run: node scripts/devos/cycle.mjs verdict
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
